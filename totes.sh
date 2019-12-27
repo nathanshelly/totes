@@ -9,4 +9,10 @@ elif command -v bat > /dev/null; then
   render_command='bat'
 fi
 
-"$render_command" "$@"
+file_to_render="$1"
+if [[ -z $1 ]]; then
+  # shellcheck disable=2012
+  file_to_render="$(ls -At -- *.md | tail -n 1)"
+  touch "$file_to_render"
+fi
+"$render_command" "$file_to_render"
