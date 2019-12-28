@@ -12,7 +12,7 @@ file_to_render="$1"
 if [[ -z $1 ]]; then
   # ref - https://github.com/koalaman/shellcheck/issues/1247
   # shellcheck disable=2012
-  file_to_render="$(ls -At -- *.md | tail -n 1)"
+  file_to_render="$(ls -At -- notes/*.md | tail -n 1)"
   # update last read time to cycle through notes
   touch "$file_to_render"
 fi
