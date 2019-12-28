@@ -10,9 +10,25 @@ fi
 
 file_to_render="$1"
 if [[ -z $1 ]]; then
+  # location based on XDG directory specification
+  # ref - https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
+  notes_path="${XDG_DATA_HOME:-$HOME/.local/share}/totes"
+
+  if [[ ! -d $notes_path ]]; then
+    echo "The notes directory - $notes_path - does not exist."
+    # shellcheck disable=2016
+    echo 'Try running the `install.sh` script again'
+    # checks if this script is in a repo (should be true if it is symlinked)
+    if git rev-parse HEAD > /dev/null 2>&1; then
+      # display full path to install script if we can find it
+      echo "path: $(git rev-parse --show-toplevel)/install.sh"
+    fi
+    exit 1
+  fi
+
   # ref - https://github.com/koalaman/shellcheck/issues/1247
   # shellcheck disable=2012
-  file_to_render="$(ls -At -- notes/*.md | tail -n 1)"
+  file_to_render="$(ls -At -- "$notes_path"/*.md | tail -n 1)"
   # update last read time to cycle through notes
   touch "$file_to_render"
 fi
