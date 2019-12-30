@@ -30,20 +30,24 @@ if [[ -z $1 ]]; then
   # shellcheck disable=2012
   file_to_render="$(ls -At -- "$notes_path"/*.md | tail -n 1)"
   # update last read time to cycle through notes
-  touch "$file_to_render"
 fi
 
 echo
 "$render_command" "$file_to_render"
 echo
 
-printf "  --> View another note?  Y(es), Q(uit)"
+printf "  --> View another note?  (y)es, (q)uit, (s)ave and quit"
 read -r -s -n 1 maybe_continue < /dev/tty
 echo
 case $maybe_continue in
   y | Y)
+    touch "$file_to_render"
     totes
     ;;
-  *) ;;
+  s | S) ;;
+
+  *)
+    touch "$file_to_render"
+    ;;
 
 esac
