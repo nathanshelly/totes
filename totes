@@ -33,4 +33,17 @@ if [[ -z $1 ]]; then
   touch "$file_to_render"
 fi
 
+echo
 "$render_command" "$file_to_render"
+echo
+
+printf "  --> View another note?  Y(es), Q(uit)"
+read -r -s -n 1 maybe_continue < /dev/tty
+echo
+case $maybe_continue in
+  y | Y)
+    totes
+    ;;
+  *) ;;
+
+esac
