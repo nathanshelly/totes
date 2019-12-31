@@ -36,18 +36,20 @@ echo
 "$render_command" "$file_to_render"
 echo
 
-printf "  --> View another note?  (y)es, (q)uit, (s)ave and quit"
+printf "  --> View another note?  (y)es, (q)uit, (x) save and quit"
 read -r -s -n 1 maybe_continue < /dev/tty
+
+# ref - https://stackoverflow.com/a/37408702
+if ! [[ "$maybe_continue" =~ ^(x|X)$ ]]; then
+  touch "$file_to_render"
+fi
 echo
 case $maybe_continue in
   y | Y)
-    touch "$file_to_render"
     totes
     ;;
-  s | S) ;;
+  x | X) ;;
 
-  *)
-    touch "$file_to_render"
-    ;;
+  *) ;;
 
 esac
