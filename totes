@@ -13,6 +13,7 @@ usage: totes [subject] [options]
 EOF
 }
 
+# get path to notes directory
 get_notes_path() {
   # location based on XDG directory specification
   # ref - https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
@@ -29,6 +30,99 @@ get_notes_path() {
     exit 1
   fi
   printf "%s" "$notes_path"
+}
+
+# get list of notes for current session (filtered by subject, supressed status,
+# etc.)
+get_all_notes() {
+  local notes_path
+  notes_path="$(get_notes_path)" || exit $?
+  if [[ -n "$optional_subject" ]]; then
+    if ! ls "$notes_path/$optional_subject"/*.md > /dev/null 2>&1; then
+      printf "No notes exist for subject '%s' @ '%s'\n" \
+        "$optional_subject" \
+        "$notes_path" \
+        >&2
+      exit 1
+    fi
+
+    printf "%s" "$(ls -At -- "$notes_path/$optional_subject"/*.md)"
+  else
+    printf "%s" "$(ls -At -- "$notes_path"/**/*.md)"
+  fi
+}
+
+# get full path to list of suppressed notes
+get_suppressed_note_registry_spec() {
+  printf "%s/suppressed_note_registry" "$(get_notes_path)" || exit $?
+}
+
+# add given note to suppressed registry
+suppress_note() {
+  printf "%s\n" "$1" >> "$(get_suppressed_note_registry_spec)" || exit $?
+}
+
+# determine the next note to render
+get_note_to_render() {
+  local suppressed_note_registry_spec all_notes active_notes note_to_render
+  suppressed_note_registry_spec="$(get_suppressed_note_registry_spec)" || exit $?
+  all_notes="$(get_all_notes)" || exit $?
+  if [[ -f "$suppressed_note_registry_spec" ]]; then
+    # filter out notes with a match in the registry
+    active_notes="$(grep -vFf "$suppressed_note_registry_spec" <<< "$all_notes")"
+  fi
+  # `tail` `active_notes` if it's non-null else `all_notes`
+  # ref - https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_06_02
+  note_to_render="$(tail -n 1 <<< "${active_notes-$all_notes}")"
+  if [[ -z $note_to_render ]]; then
+    printf "No note found. They've likely all been removed from rotation.\n" >&2
+    printf "Add new notes, or modify/delete '%s' to view notes again." \
+      "$suppressed_note_registry_spec" >&2
+    exit 1
+  fi
+  printf "%s" "$note_to_render"
+}
+
+# render the given note using the best available command
+render_single_note() {
+  note="$1"
+  if command -v mdcat > /dev/null; then
+    mdcat "$note" | less --no-init --quit-if-one-screen --RAW-CONTROL-CHARS
+  elif command -v bat > /dev/null; then
+    bat "$note"
+  else
+    cat "$note"
+  fi
+}
+
+# render the next note
+render_next_note() {
+  note_to_render="$(get_note_to_render)" || exit $? # propagate errors
+  render_single_note "$note_to_render"
+}
+
+# non-rendering ux of `totes`
+handle_user_input() {
+  printf "%s" "--> (n)ext | (q)uit | (r)emove & next | (x) save & quit --> "
+  read -r -n 1 user_action < /dev/tty
+  echo
+
+  # ref - https://stackoverflow.com/a/37408702
+  if ! [[ "$user_action" =~ ^(x|X)$ ]]; then
+    touch "$note_to_render" # update last read time to cycle through notes
+  fi
+
+  case $user_action in
+    n | N)
+      totes "$@" # propagate arguments
+      ;;
+    r | R)
+      suppress_note "$note_to_render"
+      totes "$@"
+      ;;
+    x | X) ;;
+    *) ;;
+  esac
 }
 
 # handle any arguments/flags
@@ -55,95 +149,11 @@ parse_input() {
 
   # standard behavior (flags above may skip this)
   # TODO: move rest of refactored script into here after rebasing
+  echo
+  render_next_note
+  echo
+
+  handle_user_input
 }
 
 parse_input "$@"
-
-get_all_notes() {
-  local notes_path
-  notes_path="$(get_notes_path)" || exit $?
-  if [[ -n "$optional_subject" ]]; then
-    if ! ls "$notes_path/$optional_subject"/*.md > /dev/null 2>&1; then
-      printf "No notes exist for subject '%s' @ '%s'\n" \
-        "$optional_subject" \
-        "$notes_path" \
-        >&2
-      exit 1
-    fi
-
-    printf "%s" "$(ls -At -- "$notes_path/$optional_subject"/*.md)"
-  else
-    printf "%s" "$(ls -At -- "$notes_path"/**/*.md)"
-  fi
-}
-
-get_suppressed_note_registry_spec() {
-  printf "%s/suppressed_note_registry" "$(get_notes_path)" || exit $?
-}
-
-suppress_note() {
-  printf "%s\n" "$1" >> "$(get_suppressed_note_registry_spec)" || exit $?
-}
-
-# Determine the next note to render
-get_note_to_render() {
-  suppressed_note_registry_spec="$(get_suppressed_note_registry_spec)" || exit $?
-  all_notes="$(get_all_notes)" || exit $?
-  if [[ -f "$suppressed_note_registry_spec" ]]; then
-    # remove any note with a match within the registry
-    active_notes="$(grep -vFf "$suppressed_note_registry_spec" <<< "$all_notes")"
-  fi
-  # Tail active_notes if has a value;  otherwise, use all_notes
-  # ref - https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_06_02
-  note_to_render="$(tail -n 1 <<< "${active_notes-$all_notes}")"
-  if [[ -z $note_to_render ]]; then
-    printf "No note found.  Perhaps they've all been removed from rotation.\n" >&2
-    exit 1
-  fi
-  printf "%s" "$note_to_render"
-}
-
-# render the given note
-render_single_note() {
-  note="$1"
-  if command -v mdcat > /dev/null; then
-    mdcat "$note" | less --no-init --quit-if-one-screen --RAW-CONTROL-CHARS
-  elif command -v bat > /dev/null; then
-    bat "$note"
-  else
-    cat "$note"
-  fi
-}
-
-# render the next note
-render_next_note() {
-  # propagate errors
-  note_to_render="$(get_note_to_render)" || exit $?
-  render_single_note "$note_to_render"
-}
-
-echo
-# "$render_command"
-render_next_note
-echo
-
-printf "%s" " --> (n)ext, (q)uit, (r)emove and next, (x) save and quit "
-read -r -s -n 1 user_action < /dev/tty
-
-# ref - https://stackoverflow.com/a/37408702
-if ! [[ "$user_action" =~ ^(x|X)$ ]]; then
-  # update last read time to cycle through notes
-  touch "$note_to_render"
-fi
-echo
-case $user_action in
-  n | N)
-    totes "$@" # propagate arguments
-    ;;
-  r | R)
-    suppress_note "$note_to_render"
-    totes
-    ;;
-  x | X) ;;
-  *) ;;
-esac
