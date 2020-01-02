@@ -36,16 +36,16 @@ echo
 "$render_command" "$file_to_render"
 echo
 
-printf "  --> View another note?  (y)es, (q)uit, (x) save and quit"
-read -r -s -n 1 maybe_continue < /dev/tty
+printf "%s" " --> (n)ext, (q)uit, (x) save and quit "
+read -r -s -n 1 user_action < /dev/tty
 
 # ref - https://stackoverflow.com/a/37408702
-if ! [[ "$maybe_continue" =~ ^(x|X)$ ]]; then
+if ! [[ "$user_action" =~ ^(x|X)$ ]]; then
   touch "$file_to_render"
 fi
 echo
-case $maybe_continue in
-  y | Y)
+case $user_action in
+  n | N)
     totes
     ;;
   x | X) ;;
