@@ -11,6 +11,15 @@ get_render_command() {
   echo 'cat'
 }
 
+get_notes_path() {
+  echo "${XDG_DATA_HOME:-$HOME/.local/share}/totes"
+}
+
+get_suppressed_files_registry_spec() {
+  notes_dir="$(get_notes_path)"
+  echo "$notes_dir/suppressed_files_registry"
+}
+
 # Determine the next note to render
 get_note_to_render() {
   # location based on XDG directory specification
@@ -30,11 +39,21 @@ get_note_to_render() {
     exit 1
   fi
 
+  suppressed_files_registry_spec="$(get_suppressed_files_registry_spec)"
+  if ! [[ -f "$suppressed_files_registry_spec" ]]; then
+    # the suppressed_file_registry must not be empty
+    echo "dummy-text-required-here" > "$suppressed_files_registry_spec"
+  fi
+
   # ref - https://github.com/koalaman/shellcheck/issues/1247
-  local note_to_render
-  # shellcheck disable=2012
-  note_to_render="$(ls -At -- "$notes_path"/*.md | tail -n 1)"
-  printf "%s\n" "$note_to_render"
+  # shellcheck disable=2010
+  note_to_render="$(ls -At -- "$notes_path"/*.md | grep -vFf "$suppressed_files_registry_spec" | tail -n 1)"
+  printf "%s" "$note_to_render"
+}
+
+remove_file() {
+  # Consider only writing file if it's not already in suppressed_files
+  echo "$1" >> "$(get_suppressed_files_registry_spec)"
 }
 
 render_command="$(get_render_command)"
@@ -44,7 +63,7 @@ echo
 "$render_command" "$note_to_render"
 echo
 
-printf "%s" " --> (n)ext, (q)uit, (x) save and quit "
+printf "%s" " --> (n)ext, (q)uit, (r)emove from rotation, (x) save and quit "
 read -r -s -n 1 user_action < /dev/tty
 
 # ref - https://stackoverflow.com/a/37408702
@@ -56,6 +75,9 @@ echo
 case $user_action in
   n | N)
     totes
+    ;;
+  r | R)
+    remove_file "$note_to_render"
     ;;
   x | X) ;;
   *) ;;
