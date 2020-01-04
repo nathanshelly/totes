@@ -7,6 +7,8 @@ get_render_command() {
   elif command -v bat > /dev/null; then
     echo 'bat'
   fi
+
+  echo 'cat'
 }
 
 # Determine the next note to render
