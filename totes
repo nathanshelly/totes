@@ -106,7 +106,7 @@ render_next_note() {
 
 # non-rendering ux of `totes`
 handle_user_input() {
-  printf "%s" "--> (n)ext | (q)uit | (r)emove & next | (x) save & quit --> "
+  printf "%s" "--> (n)ext | (q)uit | (r)emove & next | (e)dit | (x) save & quit --> "
   read -r -n 1 user_action < /dev/tty
   echo
 
@@ -118,6 +118,17 @@ handle_user_input() {
   case $user_action in
     n | N)
       totes "$@" # propagate arguments
+      ;;
+    e | E)
+      if [[ -z "$EDITOR" ]]; then
+        printf "No value for \$EDITOR is set, so unable to edit the requested file.\n"
+        exit 0
+      fi
+      "$EDITOR" "$note_to_render"
+      # Date format: [[CC]YY]MMDDhhmm[.ss]
+      # Setting to 1:01 on jan 1, 2001, so that it's the earliest note, and so shows up next
+      touch -t 0101010101 "$note_to_render"
+      totes "$@"
       ;;
     r | R)
       suppress_note "$note_to_render"
