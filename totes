@@ -18,18 +18,6 @@ get_notes_path() {
   # location based on XDG directory specification
   # ref - https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
   local notes_path="${XDG_DATA_HOME:-$HOME/.local/share}/totes"
-  if [[ -n "$optional_subject" ]]; then
-    if ! ls "$notes_path/$optional_subject"/*.md > /dev/null 2>&1; then
-      printf "No notes exist for subject '%s' @ '%s'\n" \
-        "$optional_subject" \
-        "$notes_path" \
-        >&2
-      exit 1
-    fi
-
-    notes_path="$notes_path/$optional_subject"
-  fi
-
   if ! [[ -d $notes_path ]]; then
     printf "The notes directory - %s - does not exist.\n" "$notes_path" >&2
     # shellcheck disable=2016
@@ -44,14 +32,32 @@ get_notes_path() {
   printf "%s" "$notes_path"
 }
 
+get_all_notes() {
+  local notes_path
+  notes_path="$(get_notes_path)" || exit $?
+  if [[ -n "$optional_subject" ]]; then
+    if ! ls "$notes_path/$optional_subject"/*.md > /dev/null 2>&1; then
+      printf "No notes exist for subject '%s' @ '%s'\n" \
+        "$optional_subject" \
+        "$notes_path" \
+        >&2
+      exit 1
+    fi
+
+    printf "%s" "$(ls -At -- "$notes_path/$optional_subject"/*.md)"
+  else
+    printf "%s" "$(ls -At -- "$notes_path"/**/*.md)"
+  fi
+}
+
 get_suppressed_note_registry_spec() {
-  printf "%s/suppressed_note_registry" "$(get_notes_path)"
+  printf "%s/suppressed_note_registry" "$(get_notes_path)" || exit $?
 }
 
 # Determine the next note to render
 get_note_to_render() {
-  suppressed_note_registry_spec="$(get_suppressed_note_registry_spec)"
-  all_notes="$(ls -At -- "$(get_notes_path)"/**/*.md)"
+  suppressed_note_registry_spec="$(get_suppressed_note_registry_spec)" || exit $?
+  all_notes="$(get_all_notes)" || exit $?
   if [[ -f "$suppressed_note_registry_spec" ]]; then
     # remove any note with a match within the registry
     active_notes="$(grep -vFf "$suppressed_note_registry_spec" <<< "$all_notes")"
@@ -67,7 +73,7 @@ get_note_to_render() {
 }
 
 suppress_note() {
-  printf "%s\n" "$1" >> "$(get_suppressed_note_registry_spec)"
+  printf "%s\n" "$1" >> "$(get_suppressed_note_registry_spec)" || exit $?
 }
 
 render_command="$(get_render_command)"
