@@ -6,18 +6,15 @@ get_render_command() {
     echo 'mdcat'
   elif command -v bat > /dev/null; then
     echo 'bat'
+  else
+    echo 'cat'
   fi
-
-  echo 'cat'
 }
 
-# Determine the next note to render
-get_note_to_render() {
+get_notes_path() {
   # location based on XDG directory specification
   # ref - https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
-  local notes_path
-  notes_path="${XDG_DATA_HOME:-$HOME/.local/share}/totes"
-
+  local notes_path="${XDG_DATA_HOME:-$HOME/.local/share}/totes"
   if ! [[ -d $notes_path ]]; then
     printf "The notes directory - %s - does not exist.\n" "$notes_path"
     # shellcheck disable=2016
@@ -29,22 +26,44 @@ get_note_to_render() {
     fi
     exit 1
   fi
+  printf "%s" "$notes_path"
+}
 
-  # ref - https://github.com/koalaman/shellcheck/issues/1247
-  local note_to_render
-  # shellcheck disable=2012
-  note_to_render="$(ls -At -- "$notes_path"/*.md | tail -n 1)"
-  printf "%s\n" "$note_to_render"
+get_suppressed_note_registry_spec() {
+  printf "%s/suppressed_note_registry" "$(get_notes_path)"
+}
+
+# Determine the next note to render
+get_note_to_render() {
+  suppressed_note_registry_spec="$(get_suppressed_note_registry_spec)"
+  all_notes="$(ls -At -- "$(get_notes_path)"/*.md)"
+  if [[ -f "$suppressed_note_registry_spec" ]]; then
+    # remove any note with a match within the registry
+    active_notes="$(grep -vFf "$suppressed_note_registry_spec" <<< "$all_notes")"
+  fi
+  # Tail active_notes if has a value;  otherwise, use all_notes
+  # ref - https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_06_02
+  note_to_render="$(tail -n 1 <<< "${active_notes-$all_notes}")"
+  if [[ -z $note_to_render ]]; then
+    printf "No note was found to display.\n" >&2
+    exit 1
+  fi
+  printf "%s" "$note_to_render"
+}
+
+suppress_note() {
+  # Consider only writing file if it's not already in suppressed_notes
+  echo "$1" >> "$(get_suppressed_note_registry_spec)"
 }
 
 render_command="$(get_render_command)"
-note_to_render="$(get_note_to_render "$@")"
+note_to_render="$(get_note_to_render "$@")" || exit $?
 
 echo
 "$render_command" "$note_to_render"
 echo
 
-printf "%s" " --> (n)ext, (q)uit, (x) save and quit "
+printf "%s" " --> (n)ext, (q)uit, (r)emove from rotation, (x) save and quit "
 read -r -s -n 1 user_action < /dev/tty
 
 # ref - https://stackoverflow.com/a/37408702
@@ -56,6 +75,9 @@ echo
 case $user_action in
   n | N)
     totes
+    ;;
+  r | R)
+    suppress_note "$note_to_render"
     ;;
   x | X) ;;
   *) ;;
