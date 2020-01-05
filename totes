@@ -36,7 +36,7 @@ get_suppressed_note_registry_spec() {
 # Determine the next note to render
 get_note_to_render() {
   suppressed_note_registry_spec="$(get_suppressed_note_registry_spec)"
-  all_notes="$(ls -At -- "$(get_notes_path)"/*.md)"
+  all_notes="$(ls -At -- "$(get_notes_path)"/**/*.md)"
   if [[ -f "$suppressed_note_registry_spec" ]]; then
     # remove any note with a match within the registry
     active_notes="$(grep -vFf "$suppressed_note_registry_spec" <<< "$all_notes")"
@@ -45,7 +45,7 @@ get_note_to_render() {
   # ref - https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_06_02
   note_to_render="$(tail -n 1 <<< "${active_notes-$all_notes}")"
   if [[ -z $note_to_render ]]; then
-    printf "No note was found to display.\n" >&2
+    printf "No note found.  Perhaps they've all been removed from rotation.\n" >&2
     exit 1
   fi
   printf "%s" "$note_to_render"
@@ -63,7 +63,7 @@ echo
 "$render_command" "$note_to_render"
 echo
 
-printf "%s" " --> (n)ext, (q)uit, (r)emove from rotation, (x) save and quit "
+printf "%s" " --> (n)ext, (q)uit, (r)emove and next, (x) save and quit "
 read -r -s -n 1 user_action < /dev/tty
 
 # ref - https://stackoverflow.com/a/37408702
@@ -78,6 +78,7 @@ case $user_action in
     ;;
   r | R)
     suppress_note "$note_to_render"
+    totes
     ;;
   x | X) ;;
   *) ;;
