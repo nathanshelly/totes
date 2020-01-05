@@ -3,6 +3,16 @@
 # ref - https://stackoverflow.com/a/3601734
 [[ -n "$1" ]] && optional_subject="$1"
 
+# print usage information
+help() {
+  cat << EOF
+usage: totes [subject] [options]
+
+  --help           Show this help text
+  --list-subjects  List all available subjects
+EOF
+}
+
 get_notes_path() {
   # location based on XDG directory specification
   # ref - https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
@@ -20,6 +30,34 @@ get_notes_path() {
   fi
   printf "%s" "$notes_path"
 }
+
+# handle any arguments/flags
+parse_input() {
+  for opt in "$@"; do
+    case $opt in
+      --help)
+        help
+        exit 0
+        ;;
+      --list-subjects)
+        local notes_path
+        notes_path="$(get_notes_path)" || exit $?
+        find "$notes_path"/* -type d -exec basename {} \;
+        exit 0
+        ;;
+      *)
+        printf "unknown option: %s" "$opt"
+        help
+        exit 1
+        ;;
+    esac
+  done
+
+  # standard behavior (flags above may skip this)
+  # TODO: move rest of refactored script into here after rebasing
+}
+
+parse_input "$@"
 
 get_all_notes() {
   local notes_path
