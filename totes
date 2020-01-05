@@ -69,7 +69,7 @@ get_note_to_render() {
 render_single_note() {
   note="$1"
   if command -v mdcat > /dev/null; then
-    mdcat "$note"
+    mdcat "$note" | less --no-init --quit-if-one-screen --RAW-CONTROL-CHARS
   elif command -v bat > /dev/null; then
     bat "$note"
   else
