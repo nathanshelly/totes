@@ -52,8 +52,7 @@ get_note_to_render() {
 }
 
 suppress_note() {
-  # Consider only writing file if it's not already in suppressed_notes
-  echo "$1" >> "$(get_suppressed_note_registry_spec)"
+  printf "%s\n" "$1" >> "$(get_suppressed_note_registry_spec)"
 }
 
 render_command="$(get_render_command)"
