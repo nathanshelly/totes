@@ -3,17 +3,6 @@
 # ref - https://stackoverflow.com/a/3601734
 [[ -n "$1" ]] && optional_subject="$1"
 
-# Determine which command is available to render the file
-get_render_command() {
-  if command -v mdcat > /dev/null; then
-    echo 'mdcat'
-  elif command -v bat > /dev/null; then
-    echo 'bat'
-  else
-    echo 'cat'
-  fi
-}
-
 get_notes_path() {
   # location based on XDG directory specification
   # ref - https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
@@ -54,6 +43,10 @@ get_suppressed_note_registry_spec() {
   printf "%s/suppressed_note_registry" "$(get_notes_path)" || exit $?
 }
 
+suppress_note() {
+  printf "%s\n" "$1" >> "$(get_suppressed_note_registry_spec)" || exit $?
+}
+
 # Determine the next note to render
 get_note_to_render() {
   suppressed_note_registry_spec="$(get_suppressed_note_registry_spec)" || exit $?
@@ -72,16 +65,28 @@ get_note_to_render() {
   printf "%s" "$note_to_render"
 }
 
-suppress_note() {
-  printf "%s\n" "$1" >> "$(get_suppressed_note_registry_spec)" || exit $?
+# render the given note
+render_single_note() {
+  note="$1"
+  if command -v mdcat > /dev/null; then
+    mdcat "$note"
+  elif command -v bat > /dev/null; then
+    bat "$note"
+  else
+    cat "$note"
+  fi
 }
 
-render_command="$(get_render_command)"
-# propagate errors
-note_to_render="$(get_note_to_render "$@")" || exit $?
+# render the next note
+render_next_note() {
+  # propagate errors
+  note_to_render="$(get_note_to_render)" || exit $?
+  render_single_note "$note_to_render"
+}
 
 echo
-"$render_command" "$note_to_render"
+# "$render_command"
+render_next_note
 echo
 
 printf "%s" " --> (n)ext, (q)uit, (r)emove and next, (x) save and quit "
