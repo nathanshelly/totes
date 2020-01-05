@@ -21,7 +21,7 @@ get_notes_path() {
   if ! [[ -d $notes_path ]]; then
     printf "The notes directory - %s - does not exist.\n" "$notes_path" >&2
     # shellcheck disable=2016
-    printf "Try running the $(install.sh) script again\n" >&2
+    printf 'Try running the `install.sh` script again\n' >&2
     # checks if this script is in a repo (should be true if it is symlinked)
     if git rev-parse HEAD > /dev/null 2>&1; then
       # display full path to install script if we can find it
@@ -64,10 +64,13 @@ suppress_note() {
 
 # determine the next note to render
 get_note_to_render() {
-  local suppressed_note_registry_spec all_notes active_notes note_to_render
+  local suppressed_note_registry_spec all_notes note_to_render
   suppressed_note_registry_spec="$(get_suppressed_note_registry_spec)" || exit $?
   all_notes="$(get_all_notes)" || exit $?
   if [[ -f "$suppressed_note_registry_spec" ]]; then
+    # `active_notes` must be declared here (instead of at the start of this
+    # function) for the `${active_notes-$all_notes}` expansion to work
+    local active_notes
     # filter out notes with a match in the registry
     active_notes="$(grep -vFf "$suppressed_note_registry_spec" <<< "$all_notes")"
   fi
