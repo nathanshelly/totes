@@ -142,8 +142,8 @@ parse_input() {
         find "$notes_path"/* -type d -exec basename {} \;
         exit 0
         ;;
-      *)
-        printf "unknown option: %s" "$opt"
+      --*)
+        printf "unknown option: %s\n\n" "$opt"
         help
         exit 1
         ;;
