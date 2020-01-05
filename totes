@@ -21,11 +21,11 @@ get_notes_path() {
   if ! [[ -d $notes_path ]]; then
     printf "The notes directory - %s - does not exist.\n" "$notes_path" >&2
     # shellcheck disable=2016
-    printf 'Try running the `install.sh` script again' >&2
+    printf "Try running the $(install.sh) script again\n" >&2
     # checks if this script is in a repo (should be true if it is symlinked)
     if git rev-parse HEAD > /dev/null 2>&1; then
       # display full path to install script if we can find it
-      printf "path: %s/install.sh" "$(git rev-parse --show-toplevel)" >&2
+      printf "path: %s/install.sh\n" "$(git rev-parse --show-toplevel)" >&2
     fi
     exit 1
   fi
@@ -76,7 +76,7 @@ get_note_to_render() {
   note_to_render="$(tail -n 1 <<< "${active_notes-$all_notes}")"
   if [[ -z $note_to_render ]]; then
     printf "No note found. They've likely all been removed from rotation.\n" >&2
-    printf "Add new notes, or modify/delete '%s' to view notes again." \
+    printf "Add new notes, or modify/delete '%s' to view notes again.\n" \
       "$suppressed_note_registry_spec" >&2
     exit 1
   fi
@@ -148,7 +148,6 @@ parse_input() {
   done
 
   # standard behavior (flags above may skip this)
-  # TODO: move rest of refactored script into here after rebasing
   echo
   render_next_note
   echo
