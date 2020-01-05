@@ -155,7 +155,7 @@ parse_input() {
   render_next_note
   echo
 
-  handle_user_input
+  handle_user_input "$@"
 }
 
 parse_input "$@"
