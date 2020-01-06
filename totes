@@ -98,6 +98,20 @@ render_single_note() {
   fi
 }
 
+make_new_note_spec() {
+  old_file_spec=$1
+  new_file_name=$2
+
+  # Select for everything before what comes between the final slash and the '.md' at the end
+  re="(.*\/)[^\/]*\.md$"
+  if [[ $old_file_spec =~ $re ]]; then
+    printf "%s%s.md" "${BASH_REMATCH[1]}" "$new_file_name"
+  else
+    printf "problem passing input=%s" "$old_file_spec" >&2
+    exit 1
+  fi
+}
+
 # render the next note
 render_next_note() {
   note_to_render="$(get_note_to_render)" || exit $? # propagate errors
@@ -106,7 +120,7 @@ render_next_note() {
 
 # non-rendering ux of `totes`
 handle_user_input() {
-  printf "%s" "--> (n)ext | (q)uit | (r)emove & next | (e)dit | (x) save & quit --> "
+  printf "%s" "--> (n)ext | (q)uit | (r)emove & next | (e)dit | (c)reate new note | (x) save & quit --> "
   read -r -n 1 user_action < /dev/tty
   echo
 
@@ -121,13 +135,29 @@ handle_user_input() {
       ;;
     e | E)
       if [[ -z "$EDITOR" ]]; then
-        printf "No value for \$EDITOR is set, so unable to edit the requested file.\n"
+        printf "No value for \$EDITOR is set, so unable to edit the requested note.\n"
         exit 0
       fi
       "$EDITOR" "$note_to_render"
       # Date format: [[CC]YY]MMDDhhmm[.ss]
       # Setting to 1:01 on jan 1, 2001, so that it's the earliest note, and so shows up next
       touch -t 0101010101 "$note_to_render"
+      totes "$@"
+      ;;
+    c | C)
+      if [[ -z "$EDITOR" ]]; then
+        printf "No value for \$EDITOR is set, so unable to create a new note.\n"
+        exit 0
+      fi
+      printf "%s" "--> Enter a filename (with no extension) for this new note: "
+      read -r file_name < /dev/tty
+      if [[ -z "$file_name" ]]; then
+        printf "No name for new note was provided.\n"
+        exit 1
+      fi
+      new_note_spec=$(make_new_note_spec "$note_to_render" "$file_name") || exit $?
+      "$EDITOR" "$new_note_spec"
+      touch -t 0101010101 "$new_note_spec"
       totes "$@"
       ;;
     r | R)
