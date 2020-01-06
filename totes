@@ -98,13 +98,16 @@ render_single_note() {
   fi
 }
 
+# construct a spec for a new note, given the existing note spec and the
+# user-entered name for the new note
 make_new_note_spec() {
-  old_file_spec=$1
-  new_file_name=$2
+  local old_file_spec=$1
+  local new_file_name=$2 # expected to not have an extension
 
-  # Select for everything before what comes between the final slash and the '.md' at the end
-  re="(.*\/)[^\/]*\.md$"
-  if [[ $old_file_spec =~ $re ]]; then
+  # Match what comes before the file name.
+  # The BASE_REMATCH value will have the directory path
+  local regular_expression="(.*\/)[^\/]*\.md$"
+  if [[ $old_file_spec =~ $regular_expression ]]; then
     printf "%s%s.md" "${BASH_REMATCH[1]}" "$new_file_name"
   else
     printf "problem passing input=%s" "$old_file_spec" >&2
@@ -155,9 +158,12 @@ handle_user_input() {
         printf "No name for new note was provided.\n"
         exit 1
       fi
+      local new_note_spec
       new_note_spec=$(make_new_note_spec "$note_to_render" "$file_name") || exit $?
       "$EDITOR" "$new_note_spec"
-      touch -t 0101010101 "$new_note_spec"
+      # If the user quit without saving, the note will not be created
+      # In this case, avoid creating a note with this touch command
+      touch -c -t 0101010101 "$new_note_spec"
       totes "$@"
       ;;
     r | R)
