@@ -111,6 +111,7 @@ get_note_to_render() {
 
 # render the given note using the best available command
 render_single_note() {
+  clear
   note="$1"
   if command -v mdcat > /dev/null; then
     mdcat "$note" | less --no-init --quit-if-one-screen --RAW-CONTROL-CHARS
