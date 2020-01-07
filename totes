@@ -10,6 +10,7 @@ usage: totes [subject] [options]
 
   --help           Show this help text
   --list-subjects  List all available subjects
+  --unsuppress     List suppressed notes, with option to unsuppress them
 EOF
 }
 
@@ -66,22 +67,43 @@ suppress_note() {
 get_note_to_render() {
   local suppressed_note_registry_spec all_notes note_to_render
   suppressed_note_registry_spec="$(get_suppressed_note_registry_spec)" || exit $?
-  all_notes="$(get_all_notes)" || exit $?
-  if [[ -f "$suppressed_note_registry_spec" ]]; then
-    # `active_notes` must be declared here (instead of at the start of this
-    # function) for the `${active_notes-$all_notes}` expansion to work
-    local active_notes
-    # filter out notes with a match in the registry
-    active_notes="$(grep -vFf "$suppressed_note_registry_spec" <<< "$all_notes")"
-  fi
-  # `tail` `active_notes` if it's non-null else `all_notes`
-  # ref - https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_06_02
-  note_to_render="$(tail -n 1 <<< "${active_notes-$all_notes}")"
-  if [[ -z $note_to_render ]]; then
-    printf "No note found. They've likely all been removed from rotation.\n" >&2
-    printf "Add new notes, or modify/delete '%s' to view notes again.\n" \
-      "$suppressed_note_registry_spec" >&2
-    exit 1
+  if [[ $is_unsuppress_mode == true ]]; then
+    # todo set note_to_render here, for is_unsuppress mode
+    if [[ -f "$suppressed_note_registry_spec" && $(wc -c < "$suppressed_note_registry_spec" | xargs) -gt 1 ]]; then
+      note_to_render="$(head -n 1 "$suppressed_note_registry_spec")"
+      # move the first line to the last line
+      tail -n +2 "$suppressed_note_registry_spec" > "$suppressed_note_registry_spec.tmp" && mv "$suppressed_note_registry_spec.tmp" "$suppressed_note_registry_spec"
+      printf "%s\n" "$note_to_render" >> "$suppressed_note_registry_spec"
+    fi
+    # verify that note was found
+    if [[ -z $note_to_render ]]; then
+      printf "No suppressed notes found. Perhaps there are none (suppressed, that is).\n" >&2
+      exit 1
+    fi
+    if ! [[ -f $note_to_render ]]; then
+      printf "No suppressed note found at %s\n" "$note_to_render" >&2
+      exit 1
+    fi
+  else
+    all_notes="$(get_all_notes)" || exit $?
+    if [[ -f "$suppressed_note_registry_spec" && $(wc -c < "$suppressed_note_registry_spec" | xargs) -gt 1 ]]; then
+      # `active_notes` must be declared here (instead of at the start of this
+      # function) for the `${active_notes-$all_notes}` expansion to work
+      local active_notes
+      # filter out notes with a match in the registry
+      active_notes="$(grep -vFf "$suppressed_note_registry_spec" <<< "$all_notes")"
+    fi
+    # `tail` `active_notes` if it's non-null else `all_notes`
+    # ref - https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_06_02
+    note_to_render="$(tail -n 1 <<< "${active_notes-$all_notes}")"
+
+    # verify that note was found
+    if [[ -z $note_to_render ]]; then
+      printf "No note found. They've likely all been removed from rotation.\n" >&2
+      printf "Add new notes, or modify/delete '%s' to view notes again.\n" \
+        "$suppressed_note_registry_spec" >&2
+      exit 1
+    fi
   fi
   printf "%s" "$note_to_render"
 }
@@ -123,7 +145,11 @@ render_next_note() {
 
 # non-rendering ux of `totes`
 handle_user_input() {
-  printf "%s" "--> (n)ext | (q)uit | (r)emove & next | (e)dit | (c)reate new note | (x) save & quit --> "
+  local suppression_option="(r)emove & next"
+  if [[ $is_unsuppress_mode == true ]]; then
+    suppression_option="(u)nsuppress"
+  fi
+  printf "%s (n)ext | (q)uit | %s | (e)dit | (c)reat new | (x) save & quit %s" "  -->" "$suppression_option" "--> "
   read -r -n 1 user_action < /dev/tty
   echo
 
@@ -170,6 +196,13 @@ handle_user_input() {
       suppress_note "$note_to_render"
       totes "$@"
       ;;
+    u | U)
+      local registry_spec
+      registry_spec="$(get_suppressed_note_registry_spec)"
+      # get the size of the last line, and truncate that out of registry_spec
+      truncate -s -"$(tail -n1 "$registry_spec" | wc -c | xargs)" "$registry_spec"
+      totes "$@"
+      ;;
     x | X) ;;
     *) ;;
   esac
@@ -177,6 +210,7 @@ handle_user_input() {
 
 # handle any arguments/flags
 parse_input() {
+  is_unsuppress_mode=false
   for opt in "$@"; do
     case $opt in
       --help)
@@ -188,6 +222,9 @@ parse_input() {
         notes_path="$(get_notes_path)" || exit $?
         find "$notes_path"/* -type d -exec basename {} \;
         exit 0
+        ;;
+      --unsuppress)
+        is_unsuppress_mode=true
         ;;
       --*)
         printf "unknown option: %s\n\n" "$opt"
