@@ -1,4 +1,3 @@
-## GIT Branch deletion
+## GIT - Branch deletion
 
-gdel, etc
-
+- `> gdel <branch-name>` : delete the specified branch(es) both locally and remotely
