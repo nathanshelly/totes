@@ -10,6 +10,7 @@ usage: totes [subject] [options]
 
   --help           Show this help text
   --list-subjects  List all available subjects
+  --list-notes     List all notes, grouped by subject (including suppressed notes)
   --unsuppress     List suppressed notes, with option to unsuppress them
 EOF
 }
@@ -221,6 +222,16 @@ parse_input() {
         local notes_path
         notes_path="$(get_notes_path)" || exit $?
         find "$notes_path"/* -type d -exec basename {} \;
+        exit 0
+        ;;
+      --list-notes)
+        notes_path="$(get_notes_path)" || exit $?
+        notes_dirs=$(find "$notes_path"/* -type d -exec basename {} \;)
+        while read -r dir; do
+          printf "\n- '%s' notes -\n\n" "$dir"
+          ls -RAp1 "$(get_notes_path)/$dir"
+          printf "\n"
+        done <<< "$notes_dirs"
         exit 0
         ;;
       --unsuppress)
