@@ -140,11 +140,11 @@ render_next_note() {
 
 # non-rendering ux of `totes`
 handle_user_input() {
-  local suppression_option="(r)emove & next"
+  local suppression_option="(s)uppress"
   if [[ $is_unsuppress_mode == true ]]; then
     suppression_option="(u)nsuppress"
   fi
-  printf "%s (n)ext | (q)uit | %s | (e)dit | (c)reat new | (x) save & quit %s" "  -->" "$suppression_option" "--> "
+  printf "%s (n)ext | (q)uit | %s | (e)dit | (c)reate | (x) save & quit %s" "-->" "$suppression_option" "--> "
   read -r -n 1 user_action < /dev/tty
   echo
 
@@ -187,7 +187,7 @@ handle_user_input() {
       touch -c -t 0101010101 "$new_note_spec"
       totes "$@"
       ;;
-    r | R)
+    s | S)
       suppress_note "$note_to_render"
       totes "$@"
       ;;
@@ -222,7 +222,7 @@ parse_input() {
         notes_path="$(get_notes_path)" || exit $?
         notes_dirs=$(find "$notes_path"/* -type d -exec basename {} \;)
         while read -r dir; do
-          printf "\n- '%s' notes -\n\n" "$dir"
+          printf "\n- '%s' -\n\n" "$dir"
           ls -RAp1 "$(get_notes_path)/$dir"
           printf "\n"
         done <<< "$notes_dirs"
