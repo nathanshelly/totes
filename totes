@@ -128,15 +128,8 @@ make_new_note_spec() {
   local old_file_spec=$1
   local new_file_name=$2 # expected to not have an extension
 
-  # Match what comes before the file name.
-  # The BASE_REMATCH value will have the directory path
-  local regular_expression="(.*\/)[^\/]*\.md$"
-  if [[ $old_file_spec =~ $regular_expression ]]; then
-    printf "%s%s.md" "${BASH_REMATCH[1]}" "$new_file_name"
-  else
-    printf "problem passing input=%s" "$old_file_spec" >&2
-    exit 1
-  fi
+  # extract path to file without filename
+  printf "%s/%s.md" "$(dirname "$old_file_spec")" "$new_file_name"
 }
 
 # render the next note
