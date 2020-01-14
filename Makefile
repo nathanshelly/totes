@@ -1,4 +1,7 @@
-# ref - https://opensource.com/article/18/8/what-how-makefile
+# refs
+# - https://opensource.com/article/18/8/what-how-makefile
+# - https://maex.me/2018/02/dont-fear-the-makefile/
+# - http://www.cs.colby.edu/maxwell/courses/tutorials/maketutor/
 
 # targets without immediate file dependencies
 .PHONY: install run help
